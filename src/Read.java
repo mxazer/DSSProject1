@@ -35,6 +35,7 @@ import opennlp.tools.util.Span;
 
 public class Read {
 	
+	private static final String OPENNLP_DIR = "./opennlp-models/";
 	public static void main(String[] args) {
 
 		System.out.println("Welcome to DSS Project 1.");
@@ -52,7 +53,7 @@ public class Read {
 		}
 
 		readTextFiles();
-		Parse parse = parseSentence(inputQuestions);
+//		Parse parse = parseSentence(inputQuestions);
 
 //		ParseNounPhrases
 //				.ParseNounPhrase("Who is the author of The Call of the Wild?");
@@ -136,7 +137,7 @@ public class Read {
 			throws InvalidFormatException, IOException {
 
 		// always start with a model, a model is learned from training data
-		InputStream is = new FileInputStream("en-sent.bin");
+		InputStream is = new FileInputStream(OPENNLP_DIR + "en-sent.bin");
 		SentenceModel model = new SentenceModel(is);
 		SentenceDetectorME sdetector = new SentenceDetectorME(model);
 
@@ -150,7 +151,7 @@ public class Read {
 
 	public static String[] tokenizeString(String stringToTokenize)
 			throws InvalidFormatException, IOException {
-		InputStream is = new FileInputStream("en-token.bin");
+		InputStream is = new FileInputStream(OPENNLP_DIR + "en-token.bin");
 
 		TokenizerModel model = new TokenizerModel(is);
 
@@ -163,7 +164,7 @@ public class Read {
 	}
 
 	public static void findName(String[] tokens) throws IOException {
-		InputStream is = new FileInputStream("en-ner-person.bin");
+		InputStream is = new FileInputStream(OPENNLP_DIR + "en-ner-person.bin");
 
 		TokenNameFinderModel model = new TokenNameFinderModel(is);
 		is.close();
@@ -196,7 +197,7 @@ public class Read {
 	
 	public static void POSTag(String stringToPOSTag) throws IOException {
 		POSModel model = new POSModelLoader()	
-			.load(new File("en-pos-maxent.bin"));
+			.load(new File(OPENNLP_DIR + "en-pos-maxent.bin"));
 		PerformanceMonitor perfMon = new PerformanceMonitor(System.err, "sent");
 		POSTaggerME tagger = new POSTaggerME(model);
 	 
@@ -220,97 +221,97 @@ public class Read {
 		perfMon.stopAndPrintFinalResult();
 	}
 
-	private static Parse parseSentence (String text) {
-		final Parse p = new Parse(text,
-		// a new span covering the entire text
-				new Span(0, text.length()),
-				// the label for the top if an incomplete node
-				AbstractBottomUpParser.INC_NODE,
-				// the probability of this parse...uhhh...?
-				1,
-				// the token index of the head of this parse
-				0);
-
-		// make sure to initialize the _tokenizer correctly
-		final Span[] spans = _tokenizer.tokenizePos(text);
-
-		for (int idx = 0; idx < spans.length; idx++) {
-			final Span span = spans[idx];
-			// flesh out the parse with individual token sub-parses
-			p.insert(new Parse(text, span, AbstractBottomUpParser.TOK_NODE, 0,
-					idx));
-		}
-
-		Parse actualParse = parse(p);
-		return actualParse;
-	}
-
-	private static Parser _parser = null;
-
-	private static Parse parse(final Parse p) {
-		// lazy initializer
-		if (_parser == null) {
-			InputStream modelIn = null;
-			try {
-				// Loading the parser model
-				InputStream is = new FileInputStream(
-						"en-parser-chunking.bin");
-				final ParserModel parseModel = new ParserModel(is);
-				is.close();
-
-				_parser = ParserFactory.create(parseModel);
-			} catch (final IOException ioe) {
-				ioe.printStackTrace();
-			} finally {
-				if (modelIn != null) {
-					try {
-						modelIn.close();
-					} catch (final IOException e) {
-					} // oh well!
-				}
-			}
-		}
-		return _parser.parse(p);
-	}
+//	private static Parse parseSentence (String text) {
+//		final Parse p = new Parse(text,
+//		// a new span covering the entire text
+//				new Span(0, text.length()),
+//				// the label for the top if an incomplete node
+//				AbstractBottomUpParser.INC_NODE,
+//				// the probability of this parse...uhhh...?
+//				1,
+//				// the token index of the head of this parse
+//				0);
+//
+//		// make sure to initialize the _tokenizer correctly
+//		final Span[] spans = _tokenizer.tokenizePos(text);
+//
+//		for (int idx = 0; idx < spans.length; idx++) {
+//			final Span span = spans[idx];
+//			// flesh out the parse with individual token sub-parses
+//			p.insert(new Parse(text, span, AbstractBottomUpParser.TOK_NODE, 0,
+//					idx));
+//		}
+//
+//		Parse actualParse = parse(p);
+//		return actualParse;
+//	}
+//
+//	private static Parser _parser = null;
+//
+//	private static Parse parse(final Parse p) {
+//		// lazy initializer
+//		if (_parser == null) {
+//			InputStream modelIn = null;
+//			try {
+//				// Loading the parser model
+//				InputStream is = new FileInputStream(
+//						OPENNLP_DIR + "en-parser-chunking.bin");
+//				final ParserModel parseModel = new ParserModel(is);
+//				is.close();
+//
+//				_parser = ParserFactory.create(parseModel);
+//			} catch (final IOException ioe) {
+//				ioe.printStackTrace();
+//			} finally {
+//				if (modelIn != null) {
+//					try {
+//						modelIn.close();
+//					} catch (final IOException e) {
+//					} // oh well!
+//				}
+//			}
+//		}
+//		return _parser.parse(p);
+//	}
 	
-	public static void chunk() throws IOException {
-		POSModel model = new POSModelLoader()
-				.load(new File("en-pos-maxent.bin"));
-		PerformanceMonitor perfMon = new PerformanceMonitor(System.err, "sent");
-		POSTaggerME tagger = new POSTaggerME(model);
-	 
-		String input = "Hi. How are you? This is Mike.";
-		ObjectStream<String> lineStream = new PlainTextByLineStream(
-				new StringReader(input));
-	 
-		perfMon.start();
-		String line;
-		String whitespaceTokenizerLine[] = null;
-	 
-		String[] tags = null;
-		while ((line = lineStream.read()) != null) {
-			whitespaceTokenizerLine = WhitespaceTokenizer.INSTANCE
-					.tokenize(line);
-			tags = tagger.tag(whitespaceTokenizerLine);
-	 
-			POSSample sample = new POSSample(whitespaceTokenizerLine, tags);
-			System.out.println(sample.toString());
-				perfMon.incrementCounter();
-		}
-		perfMon.stopAndPrintFinalResult();
-	 
-		// chunker
-		InputStream is = new FileInputStream("en-chunker.bin");
-		ChunkerModel cModel = new ChunkerModel(is);
-	 
-		ChunkerME chunkerME = new ChunkerME(cModel);
-		String result[] = chunkerME.chunk(whitespaceTokenizerLine, tags);
-	 
-		for (String s : result)
-			System.out.println(s);
-	 
-		Span[] span = chunkerME.chunkAsSpans(whitespaceTokenizerLine, tags);
-		for (Span s : span)
-			System.out.println(s.toString());
-	}
+//	public static void chunk() throws IOException {
+//		POSModel model = new POSModelLoader()
+//				.load(new File(OPENNLP_DIR + "en-pos-maxent.bin"));
+//		PerformanceMonitor perfMon = new PerformanceMonitor(System.err, "sent");
+//		POSTaggerME tagger = new POSTaggerME(model);
+//	 
+//		String input = "Hi. How are you? This is Mike.";
+//		ObjectStream<String> lineStream = new PlainTextByLineStream(
+//				new StringReader(input));
+//	 
+//		perfMon.start();
+//		String line;
+//		String whitespaceTokenizerLine[] = null;
+//	 
+//		String[] tags = null;
+//		while ((line = lineStream.read()) != null) {
+//			whitespaceTokenizerLine = WhitespaceTokenizer.INSTANCE
+//					.tokenize(line);
+//			tags = tagger.tag(whitespaceTokenizerLine);
+//	 
+//			POSSample sample = new POSSample(whitespaceTokenizerLine, tags);
+//			System.out.println(sample.toString());
+//				perfMon.incrementCounter();
+//		}
+//		perfMon.stopAndPrintFinalResult();
+//	 
+//		// chunker
+//		InputStream is = new FileInputStream(OPENNLP_DIR + "en-chunker.bin");
+//		ChunkerModel cModel = new ChunkerModel(is);
+//	 
+//		ChunkerME chunkerME = new ChunkerME(cModel);
+//		String result[] = chunkerME.chunk(whitespaceTokenizerLine, tags);
+//	 
+//		for (String s : result)
+//			System.out.println(s);
+//	 
+//		Span[] span = chunkerME.chunkAsSpans(whitespaceTokenizerLine, tags);
+//		for (Span s : span)
+//			System.out.println(s.toString());
+//	}
 }
