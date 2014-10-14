@@ -50,8 +50,9 @@ public class Read {
 
 	public static void main(String[] args) throws IOException,
 			InvalidTokenOffsetsException {
-
+		//this method indexes the files, runs once only at startup
 		readTextFiles();
+		
 		String inputQuestion = null;
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		try {
@@ -62,27 +63,46 @@ public class Read {
 
 		do {
 			try {
-				System.out.println("Welcome to DSS Project 1.");
-				System.out
-						.println("Type in a question in english to get an answer from the system.");
-				System.out.println("Type 'quit' to exit");
-				System.out.print("Q:");
+				displayMenu();
 				inputQuestion = br.readLine();
 				if (inputQuestion.equalsIgnoreCase("quit")) {
 					break;
-				}int questionType= TextFileIndexer.checkQuestionValidity(inputQuestion);
-				if (questionType == -1) {
-					System.out.println("Sorry, I don’t understand your questions.");
-				} else {
-				try {
-					inputQuestion = StopWords.removeStopWords(inputQuestion);
-					ArrayList<String> results = searchIndexedFiles(inputQuestion);
-					if (results != null)
-						System.out.println("ANSWER IS "
-								+ analyzeResults(inputQuestion, results, questionType));
-				} catch (ParseException e) {
-					e.printStackTrace();
-				}}
+				}
+				int questionType = TextFileIndexer.checkQuestionValidity(inputQuestion);
+				//user asked for topic
+				if(questionType ==4) {
+					
+				} 
+				//user asked for db
+				else if(questionType==5){
+					System.out.println("!!!!Knowlegebase!!!!");
+					for (int i =0;i< TextFileIndexer.SENT_STRINGS.length;i++){
+						System.out.println(i +". " + TextFileIndexer.SENT_STRINGS[i]);
+					}
+				}
+				else {
+							
+					if (questionType == -1) {
+						System.out
+								.println("Sorry, I don’t understand your questions.");
+					} 
+//						else if (questionType == 4){
+//						
+//					}
+					else{
+						try {
+							inputQuestion = StopWords
+									.removeStopWords(inputQuestion);
+							ArrayList<String> results = searchIndexedFiles(inputQuestion);
+							if (results != null)
+								System.out.println("ANSWER:"
+										+ analyzeResults(inputQuestion,
+												results, questionType));
+						} catch (ParseException e) {
+							e.printStackTrace();
+						}
+					}
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -96,6 +116,18 @@ public class Read {
 
 	}
 
+	private static void displayMenu() {
+		System.out.println("Welcome to DSS Project 1 Question Answering System.");
+		System.out
+				.println("Type in a question in english to get an answer from the system.");
+		System.out
+				.println("Type 'topic' to see the top 5 topics discussed in the documents.");
+		System.out
+		.println("Type 'db' to see the top 5 topics discussed in the documents.");
+		System.out.println("Type 'quit' to exit");
+		System.out.print("Q:");
+	}
+
 	private static ArrayList<String> searchIndexedFiles(String query)
 			throws ParseException, InvalidTokenOffsetsException {
 		IndexReader reader = null;
@@ -104,18 +136,14 @@ public class Read {
 			reader = DirectoryReader.open(FSDirectory.open(new File(
 					TextFileIndexer.INDEX_DIR)));
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 		IndexSearcher searcher = new IndexSearcher(reader);
 		TopScoreDocCollector collector = TopScoreDocCollector.create(5, true);
-
 		try {
-			// TextFileIndexer.searchIndex(searcher, collector, query);
 			results = TextFileIndexer.searchIndexForSentence(searcher,
 					collector, query);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return results;
@@ -142,8 +170,7 @@ public class Read {
 					while ((line = bufferedReader.readLine()) != null) {
 						sb.append(line);
 					}
-					sb.append(" ");
-					// System.out.println(content);
+					sb.append(" ");					// System.out.println(content);
 
 					// Always close files.
 					bufferedReader.close();
@@ -160,36 +187,11 @@ public class Read {
 		content = sb.toString();
 
 		// sentenceDetect
-
 		try {
 			sentences = sentenceDetect(content);
-			System.out
-					.println("!!!!!!!!!!!!!!!!!!!SENTENCESPLITER!!!!!!!!!!!!!!!!");
-			for (int i = 0; i < sentences.length; i++) {
-				System.out.println(sentences[i]);
-			}
 		} catch (InvalidFormatException e) {
 			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		// tokenizeString
-		try {
-			String tokens[] = tokenizeString("Who is Stephen Harper?");
-
-			System.out.println("!!!!!!!!!!!TOKENIZER!!!!!!!!!!");
-
-			for (String a : tokens)
-				System.out.println(a);
-			findName(tokens);
-		} catch (InvalidFormatException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		// System.out.println("!!!!!!!!!!!POSTAG!!!!!!!!!!");
-		// POSTag("Hi. How are you? This is Mike.");
-		// POSTag(sentences[3]);
+		} 
 	}
 
 	public static String[] sentenceDetect(String stringToSentenceSplit)
@@ -273,100 +275,8 @@ public class Read {
 		// perfMon.stopAndPrintFinalResult();
 	}
 
-	private static Parse parseSentence(String text) {
-		final Parse p = new Parse(text,
-		// a new span covering the entire text
-				new Span(0, text.length()),
-				// the label for the top if an incomplete node
-				AbstractBottomUpParser.INC_NODE,
-				// the probability of this parse...uhhh...?
-				1,
-				// the token index of the head of this parse
-				0);
-
-		// make sure to initialize the _tokenizer correctly
-		final Span[] spans = _tokenizer.tokenizePos(text);
-
-		for (int idx = 0; idx < spans.length; idx++) {
-			final Span span = spans[idx];
-			// flesh out the parse with individual token sub-parses
-			p.insert(new Parse(text, span, AbstractBottomUpParser.TOK_NODE, 0,
-					idx));
-		}
-
-		Parse actualParse = parse(p);
-		return actualParse;
-	}
-
-	private static Parser _parser = null;
-
-	private static Parse parse(final Parse p) {
-		// lazy initializer
-		if (_parser == null) {
-			InputStream modelIn = null;
-			try {
-				// Loading the parser model
-				InputStream is = new FileInputStream(OPENNLP_DIR
-						+ "en-parser-chunking.bin");
-				final ParserModel parseModel = new ParserModel(is);
-				is.close();
-
-				_parser = ParserFactory.create(parseModel);
-			} catch (final IOException ioe) {
-				ioe.printStackTrace();
-			} finally {
-				if (modelIn != null) {
-					try {
-						modelIn.close();
-					} catch (final IOException e) {
-					} // oh well!
-				}
-			}
-		}
-		return _parser.parse(p);
-	}
-
-	public static void chunk(String input) throws IOException {
-		POSModel model = new POSModelLoader().load(new File(OPENNLP_DIR
-				+ "en-pos-maxent.bin"));
-		PerformanceMonitor perfMon = new PerformanceMonitor(System.err, "sent");
-		POSTaggerME tagger = new POSTaggerME(model);
-
-		ObjectStream<String> lineStream = new PlainTextByLineStream(
-				new StringReader(input));
-
-		perfMon.start();
-		String line;
-		String whitespaceTokenizerLine[] = null;
-
-		String[] tags = null;
-		while ((line = lineStream.read()) != null) {
-			whitespaceTokenizerLine = WhitespaceTokenizer.INSTANCE
-					.tokenize(line);
-			tags = tagger.tag(whitespaceTokenizerLine);
-
-			POSSample sample = new POSSample(whitespaceTokenizerLine, tags);
-			System.out.println(sample.toString());
-			perfMon.incrementCounter();
-		}
-		perfMon.stopAndPrintFinalResult();
-
-		// chunker
-		InputStream is = new FileInputStream(OPENNLP_DIR + "en-chunker.bin");
-		ChunkerModel cModel = new ChunkerModel(is);
-
-		ChunkerME chunkerME = new ChunkerME(cModel);
-		String result[] = chunkerME.chunk(whitespaceTokenizerLine, tags);
-
-		for (String s : result)
-			System.out.println(s);
-
-		Span[] span = chunkerME.chunkAsSpans(whitespaceTokenizerLine, tags);
-		for (Span s : span)
-			System.out.println(s.toString());
-	}
-
-	public static String analyzeResults(String query, ArrayList<String> answers, int questionType)
+	public static String analyzeResults(String query,
+			ArrayList<String> answers, int questionType)
 			throws InvalidFormatException, IOException {
 		String[] tokens = null;
 		String[] tags = null;
@@ -391,33 +301,31 @@ public class Read {
 				&& answers.size() != 0) {
 			for (int j = 0; j < answers.size(); j++) {
 				float count = 0;
-				String[] answerTags = POSTag(StopWords.removeStopWords(answers.get(j)));
+				String[] answerTags = POSTag(StopWords.removeStopWords(answers
+						.get(j)));
 				for (int i = 0; i < answerTags.length; i++) {
-							// who question
-							if (questionType == 1) {
-								if (answerTags[i].equals("NNP")
-										) {
-									count++;
-								}
-								// what question
-							} else if (questionType == 2) {
-								if ((answerTags[i].equals("NNP") || answerTags[i]
-										.equals("NN"))
-										) {
-									count++;
-								}
-								// when question
-							} else if (questionType == 3) {
-								if (answerTags[i].equals("CD")
-										) {
-									count++;
-								}
-							}
+					// who question
+					if (questionType == 1) {
+						if (answerTags[i].equals("NNP")) {
+							count++;
 						}
-						if (count > bestCount) {
-							bestCount = count;
-							bestIndex = j;
+						// what question
+					} else if (questionType == 2) {
+						if ((answerTags[i].equals("NNP") || answerTags[i]
+								.equals("NN"))) {
+							count++;
+						}
+						// when question
+					} else if (questionType == 3) {
+						if (answerTags[i].equals("CD")) {
+							count++;
+						}
 					}
+				}
+				if (count > bestCount) {
+					bestCount = count;
+					bestIndex = j;
+				}
 			}
 
 		}

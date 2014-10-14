@@ -59,31 +59,30 @@ public class TextFileIndexer {
 		// highLighter();
 		Query q = null;
 		ArrayList<String> results = new ArrayList<String>();
-			try {
-				QueryParser parser = new QueryParser(Version.LUCENE_42, "word",
-						analyzer);
-				q = parser.parse(QueryParser.escape(query));
-			} catch (ParseException e) {
-				e.printStackTrace();
-			}
-			searcher.search(q, collector);
-			ScoreDoc[] hits = collector.topDocs().scoreDocs;
+		try {
+			QueryParser parser = new QueryParser(Version.LUCENE_42, "word",
+					analyzer);
+			q = parser.parse(QueryParser.escape(query));
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		searcher.search(q, collector);
+		ScoreDoc[] hits = collector.topDocs().scoreDocs;
 
-			// collect results
-			if (hits.length != 0) {
-				System.out.println("Found " + hits.length + " sentence hits.");
-				for (int i = 0; i < hits.length; ++i) {
-					int docId = hits[i].doc;
-					float score = hits[i].score;
-					System.out.println((i + 1) + ". " + docId + " score="
-							+ score);
-					results.add(SENT_STRINGS[docId]);
-					if(i==2)
-						break;
-				}
-			} else {
-				System.out.println("Sorry, I don’t have that information.");
+		// collect results
+		if (hits.length != 0) {
+			System.out.println("Found " + hits.length + " sentence hits.");
+			for (int i = 0; i < hits.length; ++i) {
+				int docId = hits[i].doc;
+				float score = hits[i].score;
+				System.out.println((i + 1) + ". " + docId + " score=" + score);
+				results.add(SENT_STRINGS[docId]);
+				if (i == 2)
+					break;
 			}
+		} else {
+			System.out.println("Sorry, I don’t have that information.");
+		}
 		return results;
 	}
 
@@ -115,22 +114,12 @@ public class TextFileIndexer {
 
 		int originalNumDocs = writer.numDocs();
 
-		FieldType type = new FieldType();
-		type.setIndexed(true);
-		type.setIndexOptions(FieldInfo.IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
-		type.setStored(true);
-		type.setStoreTermVectors(true);
-		type.setTokenized(true);
-		type.setStoreTermVectorOffsets(true);
-
 		for (int i = 0; i < sentences.length; i++) {
 			Document docTest = new Document();
 			docTest.add(new TextField("word", sentences[i], Field.Store.YES));
 			docTest.add(new IntField("index", i, Field.Store.YES));
-			// docTest.add(new TextField("nword", sentences[i],
-			// Field.Store.YES));
 			writer.addDocument(docTest);
-			System.out.println("Added: " + sentences[i]);
+//			System.out.println("Added: " + sentences[i]);
 
 		}
 
@@ -161,6 +150,10 @@ public class TextFileIndexer {
 			return 2;
 		} else if (query.indexOf("When") != -1) {
 			return 3;
+		} else if (query.indexOf("topic") != -1) {
+			return 4;
+		} else if (query.indexOf("db") != -1) {
+			return 5;
 		} else {
 			return -1;
 		}
