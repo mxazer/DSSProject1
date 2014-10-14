@@ -70,16 +70,19 @@ public class Read {
 				inputQuestion = br.readLine();
 				if (inputQuestion.equalsIgnoreCase("quit")) {
 					break;
-				}
+				}int questionType= TextFileIndexer.checkQuestionValidity(inputQuestion);
+				if (questionType == -1) {
+					System.out.println("Sorry, I don’t understand your questions.");
+				} else {
 				try {
+					inputQuestion = StopWords.removeStopWords(inputQuestion);
 					ArrayList<String> results = searchIndexedFiles(inputQuestion);
 					if (results != null)
 						System.out.println("ANSWER IS "
-								+ analyzeResults(inputQuestion, results));
+								+ analyzeResults(inputQuestion, results, questionType));
 				} catch (ParseException e) {
 					e.printStackTrace();
-				}
-				// LuceneHighlighter.highLighter();
+				}}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -363,12 +366,11 @@ public class Read {
 			System.out.println(s.toString());
 	}
 
-	public static String analyzeResults(String query, ArrayList<String> answers)
+	public static String analyzeResults(String query, ArrayList<String> answers, int questionType)
 			throws InvalidFormatException, IOException {
 		String[] tokens = null;
 		String[] tags = null;
 
-		int quesType = -1;
 		try {
 			tokens = tokenizeString(query);
 		} catch (InvalidFormatException e) {
@@ -383,45 +385,39 @@ public class Read {
 			e.printStackTrace();
 		}
 
-		quesType = TextFileIndexer.checkQuestionValidity(query);
 		float bestCount = 0;
 		int bestIndex = -1;
-		if (quesType != -1 && tags.length > 0 && tokens.length > 0
+		if (questionType != -1 && tags.length > 0 && tokens.length > 0
 				&& answers.size() != 0) {
 			for (int j = 0; j < answers.size(); j++) {
 				float count = 0;
-				String[] answerTokens = tokenizeString(answers.get(j));
-				String[] answerTags = POSTag(answers.get(j));
-				// who question
+				String[] answerTags = POSTag(StopWords.removeStopWords(answers.get(j)));
 				for (int i = 0; i < answerTags.length; i++) {
-					for (String s : tokens) {
-						if (quesType == 1) {
-							if (answerTags[i].equals("NNP")
-									&& !answerTokens[i].equals(s)) {
-								count++;
-							}
-						} else if (quesType == 2) {
-							if ((answerTags[i].equals("NNP") || answerTags[i]
-									.equals("NN"))
-									&& !answerTokens[i].equals(s)) {
-								count++;
-							}
-						} else if (quesType == 3) {
-							if (answerTags[i].equals("CD")
-									&& !answerTokens[i].equals(s)) {
-								count++;
+							// who question
+							if (questionType == 1) {
+								if (answerTags[i].equals("NNP")
+										) {
+									count++;
+								}
+								// what question
+							} else if (questionType == 2) {
+								if ((answerTags[i].equals("NNP") || answerTags[i]
+										.equals("NN"))
+										) {
+									count++;
+								}
+								// when question
+							} else if (questionType == 3) {
+								if (answerTags[i].equals("CD")
+										) {
+									count++;
+								}
 							}
 						}
-//						if(answerTokens[i].equals(s)){
-//							count+=2;
-//						}
+						if (count > bestCount) {
+							bestCount = count;
+							bestIndex = j;
 					}
-					count = count/answerTokens.length;
-					if (count > bestCount) {
-						bestCount = count;
-						bestIndex = j;
-					}
-				}
 			}
 
 		}

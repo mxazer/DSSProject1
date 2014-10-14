@@ -59,9 +59,6 @@ public class TextFileIndexer {
 		// highLighter();
 		Query q = null;
 		ArrayList<String> results = new ArrayList<String>();
-		if (checkQuestionValidity(query) == -1) {
-			System.out.println("Sorry, I don’t understand your questions.");
-		} else {
 			try {
 				QueryParser parser = new QueryParser(Version.LUCENE_42, "word",
 						analyzer);
@@ -81,11 +78,12 @@ public class TextFileIndexer {
 					System.out.println((i + 1) + ". " + docId + " score="
 							+ score);
 					results.add(SENT_STRINGS[docId]);
+					if(i==2)
+						break;
 				}
 			} else {
 				System.out.println("Sorry, I don’t have that information.");
 			}
-		}
 		return results;
 	}
 
