@@ -1,8 +1,6 @@
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -11,8 +9,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 
 import opennlp.tools.cmdline.postag.POSModelLoader;
-import opennlp.tools.namefind.NameFinderME;
-import opennlp.tools.namefind.TokenNameFinderModel;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;
 import opennlp.tools.sentdetect.SentenceDetectorME;
@@ -24,7 +20,6 @@ import opennlp.tools.tokenize.WhitespaceTokenizer;
 import opennlp.tools.util.InvalidFormatException;
 import opennlp.tools.util.ObjectStream;
 import opennlp.tools.util.PlainTextByLineStream;
-import opennlp.tools.util.Span;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.index.DirectoryReader;
@@ -43,17 +38,22 @@ import org.apache.lucene.store.FSDirectory;
 
 public class Read {
 
+	public static final String OPENNLP_DIR = "./opennlp-models/";
 	static String sentences[] = null;
-	private static final String OPENNLP_DIR = "./opennlp-models/";
 
 	public static void main(String[] args) throws Exception {
 		// this method indexes the files, runs once only at startup
-		readTextFiles();
+		try {
+			//read the files and store an array of sentences using sentenceDetect
+			sentences = sentenceDetect(HelperMethods.readTextFiles());
+		} catch (InvalidFormatException e) {
+			e.printStackTrace();
+		}		
 		ArrayList<String> results = new ArrayList<String>();
 		String inputQuestion = null;
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-		try {
-			TextFileIndexer.indexSentences(sentences);
+		try {//index the sentences using Lucene
+			TextFileIndexer.indexSentencesAndDocuments(sentences);
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
@@ -62,36 +62,38 @@ public class Read {
 			try {
 				displayMenu();
 				inputQuestion = br.readLine();
-				if (inputQuestion.equalsIgnoreCase("quit")) {
+				if (inputQuestion.equalsIgnoreCase("quit")) {//exit option
 					break;
 				}
-				int questionType = TextFileIndexer
+				int questionType = HelperMethods
 						.checkQuestionValidity(inputQuestion);
 				// user asked for topic
 				if (questionType == 4) {
-					System.out.println("Top Topics in Descending Order:");
 					getTopics();
 				}
 				// user asked for db
 				else if (questionType == 5) {
-					System.out.println("Knowlegebase:");
+					System.out.println("\nKnowlegebase:");
 					getDb();
 				} else if (questionType == -1) {// a question type was not
 												// identified
 					System.out
-							.println("Sorry, I don’t understand your questions.");
-				} else if (questionType == 6) {// number 10, typed "search Y"
+							.println("\nSorry, I don’t understand your questions.");
+				} else if (questionType == 6) {// typed "search Y"
 					inputQuestion = inputQuestion.substring(7);
 					searchIndexedFiles(inputQuestion,
 							TextFileIndexer.INDEX_DIR_DOCS);
-				} else {
+				} else {//begins with "Who", "What", or "When"
 					try {
-						inputQuestion = StopWords
+						inputQuestion = HelperMethods
 								.removeStopWords(inputQuestion);
-						results = searchIndexedFiles(inputQuestion,
+						
+						results = searchIndexedFiles(inputQuestion,//search the sentence index
 								TextFileIndexer.INDEX_DIR);
-						if (results != null)
-							System.out.println("ANSWER: "
+						
+						//if a result is found, the answers are sent to be processed
+						if (results.size() != 0)
+							System.out.println("\nANSWER: "
 									+ analyzeResults(inputQuestion, results,
 											questionType));
 					} catch (ParseException e) {
@@ -104,6 +106,7 @@ public class Read {
 		} while (!inputQuestion.equalsIgnoreCase("quit"));
 
 		try {
+			//delete indexed files on close
 			FileUtils.deleteDirectory(new File(TextFileIndexer.INDEX_DIR));
 			FileUtils.deleteDirectory(new File(TextFileIndexer.INDEX_DIR_DOCS));
 		} catch (IOException e) {
@@ -115,7 +118,8 @@ public class Read {
 	private static void displayMenu() {
 		System.out
 				.println("\nWelcome to DSS Project 1 Question Answering System.\n");
-		System.out.println("________________________________________MENU________________________________________\n");
+		System.out
+				.println("________________________________________MENU________________________________________\n");
 		System.out
 				.println("Type in a question in english to get an answer from the system.");
 		System.out
@@ -128,6 +132,8 @@ public class Read {
 		System.out.print("Q:");
 	}
 
+	//takes the stopword-less query and directory to search and searches the specified directory indexed files for
+	//any results that are returned as an ArrayList
 	private static ArrayList<String> searchIndexedFiles(String query,
 			String indexDirectory) throws ParseException,
 			InvalidTokenOffsetsException {
@@ -142,10 +148,10 @@ public class Read {
 		IndexSearcher searcher = new IndexSearcher(reader);
 		TopScoreDocCollector collector = TopScoreDocCollector.create(6, true);
 		try {
-			if (indexDirectory.equals(TextFileIndexer.INDEX_DIR))
+			if (indexDirectory.equals(TextFileIndexer.INDEX_DIR))//sentences
 				results = TextFileIndexer.searchIndexForSentence(searcher,
 						collector, query);
-			if (indexDirectory.equals(TextFileIndexer.INDEX_DIR_DOCS))
+			if (indexDirectory.equals(TextFileIndexer.INDEX_DIR_DOCS))//documents
 				TextFileIndexer.searchIndexForDocuments(searcher, collector,
 						query);
 		} catch (IOException e) {
@@ -154,6 +160,7 @@ public class Read {
 		return results;
 	}
 
+	//get the top 5 most frequently found terms 
 	private static ArrayList<String> getTopics() throws Exception {
 		IndexReader reader = null;
 
@@ -164,25 +171,25 @@ public class Read {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-
-		// gets the most frequent terms
-		// TODO: Currently does not use an index that removes stopwords. Works
-		// because of small dataset
 		TermStats[] topFreqWords = null;
 		try {
+			//get the top 5 most frequent terms indexed 
 			Comparator<TermStats> c = new HighFreqTerms.TotalTermFreqComparator();
 			topFreqWords = HighFreqTerms.getHighFreqTerms(reader, 5, "word", c);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		ArrayList<String> results = new ArrayList<String>();
+		System.out.println("\nTop Topics in Descending Order:");
 		for (int i = 0; i < topFreqWords.length; i++) {
 			System.out.println(i + 1 + " "
-					+ topFreqWords[i].termtext.utf8ToString());
+					+ topFreqWords[i].termtext.utf8ToString());//gets the term text and displays it as a String
 		}
 		return results;
 	}
 
+	//user typed "db"
+	//returns a list of all the terms as stored in the indexed files
 	private static void getDb() throws IOException {
 		IndexReader reader = null;
 
@@ -206,51 +213,7 @@ public class Read {
 		}
 	}
 
-	private static void readTextFiles() throws IOException {
-		File folder = new File("./text-files");
-		File[] listOfFiles = folder.listFiles();
-		StringBuilder sb = new StringBuilder();
-		String content = null;
-
-		for (int i = 0; i < listOfFiles.length; i++) {
-			File file = listOfFiles[i];
-			if (file.isFile() && file.getName().endsWith(".txt")) {
-				String line = null;
-
-				try {
-					// FileReader reads text files in the default encoding.
-					FileReader fileReader = new FileReader(file);
-
-					// Always wrap FileReader in BufferedReader.
-					BufferedReader bufferedReader = new BufferedReader(
-							fileReader);
-					while ((line = bufferedReader.readLine()) != null) {
-						sb.append(line);
-					}
-					sb.append(" "); // System.out.println(content);
-
-					// Always close files.
-					bufferedReader.close();
-				} catch (FileNotFoundException ex) {
-					System.out.println("Unable to open file '" + file + "'");
-					ex.printStackTrace();
-				} catch (IOException ex) {
-					System.out.println("Error reading file '" + file + "'");
-					// Or we could just do this:
-					ex.printStackTrace();
-				}
-			}
-		}
-		content = sb.toString();
-
-		// sentenceDetect used to get separate sentences for indexing
-		try {
-			sentences = sentenceDetect(content);
-		} catch (InvalidFormatException e) {
-			e.printStackTrace();
-		}
-	}
-
+	//OpenNLP sentenceDetect
 	public static String[] sentenceDetect(String stringToSentenceSplit)
 			throws InvalidFormatException, IOException {
 
@@ -265,7 +228,8 @@ public class Read {
 		return sentences;
 	}
 
-	private static Tokenizer _tokenizer = null;
+	//OpenNLP tokenizer
+	public static Tokenizer _tokenizer = null;
 
 	// Method for tokenizing sentence strings
 	public static String[] tokenizeString(String stringToTokenize)
@@ -280,30 +244,6 @@ public class Read {
 
 		is.close();
 		return tokens;
-	}
-
-	// receives an array of tokens and finds out which is a name
-	public static void findName(String[] tokens) throws IOException {
-		InputStream is = new FileInputStream(OPENNLP_DIR + "en-ner-person.bin");
-
-		TokenNameFinderModel model = new TokenNameFinderModel(is);
-		is.close();
-
-		NameFinderME nameFinder = new NameFinderME(model);
-
-		Span nameSpans[] = nameFinder.find(tokens);
-
-		double[] spanProbs = nameFinder.probs(nameSpans);
-
-		System.out.println("!!!!!!!!!!!!NAMEFINDER!!!!!!!!!!!!!!");
-
-		for (int i = 0; i < nameSpans.length; i++) {
-			System.out.println("Span: " + nameSpans[i].toString());
-			System.out.println("Covered text is: "
-					+ tokens[nameSpans[i].getStart()] + " "
-					+ tokens[nameSpans[i].getStart() + 1]);
-			System.out.println("Probability is: " + spanProbs[i]);
-		}
 	}
 
 	// receives a string and outputs an array of POS Tags
@@ -326,20 +266,22 @@ public class Read {
 			return null;
 	}
 
+	// main algorithm for determining answer
 	public static String analyzeResults(String query,
 			ArrayList<String> answers, int questionType)
 			throws InvalidFormatException, IOException {
-		
+
 		String[] qtokens = tokenizeString(query);
 		String[] qtags = POSTag(query);
 
 		float bestCount = 0;
 		int bestIndex = -1;
+		
 		if (questionType != -1 && qtags.length > 0 && qtokens.length > 0
 				&& answers.size() != 0) {
 			for (int j = 0; j < answers.size(); j++) {
 				float count = 0;
-				String[] answerTags = POSTag(StopWords.removeStopWords(answers
+				String[] answerTags = POSTag(HelperMethods.removeStopWords(answers
 						.get(j)));
 				for (int i = 0; i < answerTags.length; i++) {
 					// who question
@@ -360,6 +302,7 @@ public class Read {
 						}
 					}
 				}
+				// gets answer with most relevant tags
 				if (count > bestCount) {
 					bestCount = count;
 					bestIndex = j;
@@ -368,7 +311,7 @@ public class Read {
 
 		}
 		if (bestIndex == -1)
-			return "Sorry I couldn't find that information";
+			return "\nSorry I couldn't find that information";
 		return answers.get(bestIndex);
 	}
 

@@ -29,7 +29,7 @@ import org.apache.lucene.util.Version;
 public class TextFileIndexer {
 	public static final String TEXT_FILES_DIR = "./text-files";
 	public static final String INDEX_DIR = "./tmp/index";
-	public static String[] SENT_STRINGS = null;
+	public static String[] SENT_STRINGS = null; 
 	public static final String INDEX_DIR_DOCS = "./tmp/index/docs";
 
 	private static StandardAnalyzer analyzer = new StandardAnalyzer(
@@ -38,10 +38,10 @@ public class TextFileIndexer {
 	private IndexWriter writer;
 	private ArrayList<File> queue = new ArrayList<File>();
 
-	public static void indexSentences(String[] sentences) throws IOException {
+	public static void indexSentencesAndDocuments(String[] sentences) throws IOException {
 		SENT_STRINGS = sentences;
 		TextFileIndexer indexer = null;
-		try {
+		try {//delete directories if already existing
 			FileUtils.deleteDirectory(new File(TextFileIndexer.INDEX_DIR));
 			FileUtils.deleteDirectory(new File(TextFileIndexer.INDEX_DIR_DOCS));
 		} catch (IOException e) {
@@ -59,7 +59,6 @@ public class TextFileIndexer {
 	public static ArrayList<String> searchIndexForSentence(
 			IndexSearcher searcher, TopScoreDocCollector collector, String query)
 			throws IOException, InvalidTokenOffsetsException {
-		// highLighter();
 		Query q = null;
 		ArrayList<String> results = new ArrayList<String>();
 		try {
@@ -109,11 +108,8 @@ public class TextFileIndexer {
 	}
 
 	public void indexSentence(String[] sentences) throws IOException {
-		// ===================================================
-		// gets the list of files in a folder (if user has submitted
-		// the name of a folder) or gets a single file name (is user
-		// has submitted only the file name)
-		// ===================================================
+		
+		//retrieve sentences and index them as separate documents
 
 		int originalNumDocs = writer.numDocs();
 
@@ -122,8 +118,6 @@ public class TextFileIndexer {
 			docTest.add(new TextField("word", sentences[i], Field.Store.YES));
 			docTest.add(new IntField("index", i, Field.Store.YES));
 			writer.addDocument(docTest);
-//			System.out.println("Added: " + sentences[i]);
-
 		}
 
 		int newNumDocs = writer.numDocs();
@@ -144,24 +138,6 @@ public class TextFileIndexer {
 	 */
 	public void closeIndex() throws IOException {
 		writer.close();
-	}
-
-	public static int checkQuestionValidity(String query) {
-		if (query.indexOf("Who") == 0) {
-			return 1;
-		} else if (query.indexOf("What") == 0) {
-			return 2;
-		} else if (query.indexOf("When") == 0) {
-			return 3;
-		} else if (query.indexOf("topic") == 0) {
-			return 4;
-		} else if (query.indexOf("db") == 0) {
-			return 5;
-		} else if (query.indexOf("search") == 0){
-			return 6;
-		} else {
-			return -1;
-		}
 	}
 
 /**
@@ -238,6 +214,7 @@ private void addFiles(File file) {
 	}
 }
 
+//seaches the indexed full documents, to find the most relevant ones and displaying them with their scores in descending order
 	public static void searchIndexForDocuments(IndexSearcher searcher,
 		TopScoreDocCollector collector, String query) throws IOException {
 			Query q = null;
@@ -248,11 +225,14 @@ private void addFiles(File file) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			//search for the query specified
 			searcher.search(q, collector);
+			
+			//stores the topDocs
 			ScoreDoc[] hits = collector.topDocs().scoreDocs;
 
-			// 4. display results
-			System.out.println("Found " + hits.length + " hits.");
+			// display results according to hits found
+			System.out.println("\nFound " + hits.length + " hits.");
 			for (int i = 0; i < hits.length; ++i) {
 				int docId = hits[i].doc;
 				Document d = searcher.doc(docId);
