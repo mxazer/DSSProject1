@@ -4,6 +4,7 @@
 #998192611
 #14-Oct-2014
 
+
 #Instructions
 
 ##1. Download from github
@@ -31,7 +32,7 @@ mvn exec:java -Dexec.mainClass="Read" -e
 #Report
 ##1. Introduction
 
-This Project contains a simple fact-based question-answering system based on Natural Language Processing. It uses plain text unstructured data stored locally in .txt files and attempts to build an indexed knowlegebase using Apache Lucene and OpenNLP.
+This Project contains a simple fact-based question-answering system based on Natural Language Processing. It uses plain text unstructured data stored locally in .txt files and builds an indexed database using Apache Lucene and OpenNLP.
 
 ##2. Software Features
 
@@ -124,7 +125,7 @@ indexer.closeIndex();
 
 2. This subsequently calls TextFileIndexer.searchIndexForDocuments(searcher, collector, query), which proceeds to search the indexed files, obtain the top results with their score, and print them in descending order.
 
-3. For similarity measuring, I decided to stick to the default one used by Lucene <http://lucene.apache.org/core/4_0_0/core/org/apache/lucene/search/similarities/DefaultSimilarity.html> More information on scoring can be found here <http://www.lucenetutorial.com/advanced-topics/scoring.html4. >
+3. For similarity measuring, I decided to stick to the default one used by Lucene <http://lucene.apache.org/core/4_0_0/core/org/apache/lucene/search/similarities/DefaultSimilarity.html> More information on scoring can be found here <http://www.lucenetutorial.com/advanced-topics/scoring.html>
 
 ##3. Design Choices and challenges faced
 
@@ -151,7 +152,7 @@ A way around this would be to co-reference sentences in the index with another F
 
 **Two seperate indexed documents**
 
-The reason for having two separate indexed files was due to some issues faced. I had decided early on that the way I wanted the program to answer the questions was to return an already formed english sentence within the texts. 
+The reason for having two separate indexed database was due to some issues faced the way I wanted the program to answer the questions was to return an already formed english sentence within the texts. This required sentences to be indexed as individual documents. The second database containing the six documents was to enable the Term Querying functionality.
 ##4. Resources Used
 
 ```
